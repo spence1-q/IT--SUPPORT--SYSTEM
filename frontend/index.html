@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Support Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+  <div class="max-w-4xl mx-auto space-y-8">
+    <header class="text-center">
+      <h1 class="text-3xl font-bold text-gray-800">IT Support Ticketing Portal</h1>
+      <p class="text-gray-600">Distributed Microservices Dashboard</p>
+    </header>
+
+    <!-- Ticket Submission Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">Submit New Ticket</h2>
+      <form id="ticketForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Title</label>
+          <input type="text" id="title" required class="w-full mt-1 p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Priority</label>
+          <select id="priority" class="w-full mt-1 p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Description</label>
+          <textarea id="description" rows="3" required class="w-full mt-1 p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition">
+          Submit Ticket
+        </button>
+      </form>
+    </div>
+
+    <!-- Active Tickets Board -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-700">Active Support Tickets</h2>
+        <button onclick="fetchTickets()" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-md">Refresh</button>
+      </div>
+      <div id="ticketsList" class="space-y-3">
+        <p class="text-gray-500 text-center py-4">Loading tickets...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api/tickets';
+
+    async function fetchTickets() {
+      try {
+        const res = await fetch(API_URL);
+        const tickets = await res.json();
+        const container = document.getElementById('ticketsList');
+
+        if (tickets.length === 0) {
+          container.innerHTML = '<p class="text-gray-500 text-center py-4">No tickets submitted yet.</p>';
+          return;
+        }
+
+        container.innerHTML = tickets.map(t => `
+          <div class="p-4 border rounded-lg flex justify-between items-start bg-gray-50">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-gray-800">#${t.id} - ${t.title}</span>
+                <span class="px-2 py-0.5 text-xs font-semibold rounded ${getPriorityStyle(t.priority)}">${t.priority}</span>
+              </div>
+              <p class="text-gray-600 text-sm mt-1">${t.description}</p>
+              <span class="text-xs text-gray-400 mt-2 block">${new Date(t.created_at).toLocaleString()}</span>
+            </div>
+            <span class="px-3 py-1 text-xs font-bold uppercase rounded bg-blue-100 text-blue-800">${t.status}</span>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('ticketsList').innerHTML = '<p class="text-red-500 text-center py-4">Error loading tickets from backend service.</p>';
+      }
+    }
+
+    function getPriorityStyle(priority) {
+      switch (priority) {
+        case 'High': return 'bg-red-100 text-red-800';
+        case 'Medium': return 'bg-yellow-100 text-yellow-800';
+        default: return 'bg-green-100 text-green-800';
+      }
+    }
+
+    document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('title').value,
+        priority: document.getElementById('priority').value,
+        description: document.getElementById('description').value
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          document.getElementById('ticketForm').reset();
+          fetchTickets();
+        }
+      } catch (err) {
+        alert('Failed to submit ticket');
+      }
+    });
+
+    fetchTickets();
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  db:
+    image: cockroachdb/cockroach:latest
+    container_name: cockroach_db
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+    networks:
+      - app-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_broker
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app-net
+
+  ticket-service:
+    build: ./ticket-service
+    container_name: ticket_service
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=26257
+      - DB_USER=root
+      - DB_NAME=defaultdb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - db
+      - rabbitmq
+    networks:
+      - app-net
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification_service
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-net
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_portal
+    ports:
+      - "80:80"
+    depends_on:
+      - ticket-service
+    networks:
+      - app-net
+
+volumes:
+  cockroach-data:
+
+networks:
+  app-net:
+    driver: bridge
